@@ -5,8 +5,10 @@
 After this module you should be able to
 
 1. Explain why one-hot encoding does not represent relationships between words.
-2. Describe how predicting neighboring words can train embeddings without labels.
-3. Interpret distances between learned embeddings and explain what those distances do and do not mean.
+2. Describe how predicting neighboring words can train embeddings without
+   labels.
+3. Interpret distances between learned embeddings and explain what those
+   distances do and do not mean.
 
 ## Introduction
 
@@ -210,11 +212,44 @@ epoch 11 loss=1.8611
 epoch 12 loss=1.8607
 Wrote results to out/synthetic
 
-python src/word2vec_plot.py \
-    --input out/synthetic \
-    --out img \
-    --epochs 0,1,3,12
+python src/plot_word2vec_training.py \
+    -i out/synthetic/training_loss.tsv \
+    -o img/word2vec_loss.png \
+    --columns loss
+
+for epoch in 0 1 3 12; do
+    cat out/synthetic/embedding_history.tsv \
+    | csvgrep -t -c epoch -r "^${epoch}$" \
+        | csvcut -C epoch \
+        | csvformat -T \
+        > out/synthetic/epoch_${epoch}.tsv
+     python src/pca.py \
+        -i out/synthetic/epoch_${epoch}.tsv \
+        -o out/synthetic/epoch_${epoch}_pca.tsv
+done
+PC1: 20.3% variance explained
+PC2: 19.5% variance explained
+Wrote out/synthetic/epoch_0_pca.tsv
+PC1: 22.5% variance explained
+PC2: 17.2% variance explained
+Wrote out/synthetic/epoch_1_pca.tsv
+PC1: 21.1% variance explained
+PC2: 17.8% variance explained
+Wrote out/synthetic/epoch_3_pca.tsv
+PC1: 20.1% variance explained
+PC2: 18.5% variance explained
+Wrote out/synthetic/epoch_12_pca.tsv
+
+for epoch in 0 1 3 12; do
+    python src/plot_scatter.py \
+        -i out/synthetic/epoch_${epoch}_pca.tsv \
+        -o img/word2vec_epoch_$(printf "%03d" "$epoch").png \
+        --groups data/word2vec_groups.tsv \
+        --labels \
+        --title "Epoch ${epoch}"
+done
 ```
+
 
 </details>
 
@@ -230,8 +265,7 @@ visualize the embeddings in two dimensions.
 
 The figures below show the embeddings before training and after 12 epochs.
 Words are colored by their groups, but these labels were not used during
-training. All four plots use the same PCA projection and axis limits so we can
-compare how the embeddings moved.
+training. 
 
 | Epoch 0 | Epoch 1 |
 |---|---|
@@ -262,13 +296,13 @@ We compared the cosine similarity of several word pairs before training (epoch
 0) and after training (epoch 12).
 
 | Word 1 | Word 2 | Epoch 0 | Epoch 12 |
-|---|---|---:|---:|
+|-|-|-|-|
 | cat | dog | -0.277 | 0.862 |
 | cat | car | 0.661 | 0.388 |
 | dog | horse | -0.072 | 0.930 |
 | car | truck | 0.045 | 0.994 |
 | apple | banana | 0.500 | 0.999 |
-| hot | cold | 0.353 | 1.000 |
+| hot | cold | 0.353 | 0.999 |
 
 Before training, the embeddings were randomly initialized, so their
 similarities did not reflect the relationships between words. After training,
@@ -287,24 +321,71 @@ how words were used, not necessarily what they meant.
 <details>
 
 ```bash
-python src/word2vec_similarity.py \
-    --history out/synthetic/embedding_history.tsv \
-    --epochs 0,12 \
-    --pairs cat,dog cat,car dog,horse car,truck \
-            apple,banana hot,cold
-epoch   word1   word2   cosine_similarity
-0       cat     dog     -0.2770
-0       cat     car      0.6610
-0       dog     horse   -0.0720
-0       car     truck    0.0446
-0       apple   banana   0.5004
-0       hot     cold     0.3526
-12      cat     dog      0.8616
-12      cat     car      0.3881
-12      dog     horse    0.9296
-12      car     truck    0.9936
-12      apple   banana   0.9994
-12      hot     cold     0.9998
+cat out/synthetic/embedding_history.tsv \
+| csvgrep -t -c epoch -r "^0$" \
+| csvgrep -c word -r "(cat|dog)" \
+| csvformat -T 
+epoch	word	dim0	dim1	dim2	dim3	dim4	dim5	dim6	dim7
+0	cat	-0.91382301	-0.65813726	0.07802387	0.52580875	-0.48799172	1.19136918	-0.81400764	-0.73599285
+0	dog	1.44513369	0.85641259	2.21807575	0.52316552	0.34664667	-0.19733144	-1.05458987	1.27799511
+
+cat out/synthetic/embedding_history.tsv \
+| csvgrep -t -c epoch -r "^0$" \
+| csvgrep -c word -r "(cat|dog)" \
+| csvcut -C epoch,word \
+| csvformat -T \
+| tail -n +2 \
+| python src/cosine_similarity.py
+-0.2769544683856346
+
+cat out/synthetic/embedding_history.tsv \
+| csvgrep -t -c epoch -r "^12$" \
+| csvgrep -c word -r "(cat|dog)" \
+| csvcut -C epoch,word \
+| csvformat -T \
+| tail -n +2 \
+| python src/cosine_similarity.py
+0.8615560805008214
+
+pairs=("(cat|dog)" "(cat|car)" "(dog|horse)" "(car|truck)" "(apple|banana)" "(hot|cold)")
+
+for pair in "${pairs[@]}"; do
+    for epoch in 0 12; do
+        echo "$pair $epoch"
+        cat out/synthetic/embedding_history.tsv \
+        | csvgrep -t -c epoch -r "^${epoch}$" \
+        | csvgrep -c word -r "${pair}" \
+        | csvcut -C epoch,word \
+        | csvformat -T \
+        | tail -n +2 \
+        | python src/cosine_similarity.py
+    done
+done
+
+(cat|dog) 0
+-0.2769544683856346
+(cat|dog) 12
+0.8615560805008214
+(cat|car) 0
+0.6610007901279926
+(cat|car) 12
+0.3881260948936069
+(dog|horse) 0
+-0.07198597946278765
+(dog|horse) 12
+0.929570110073506
+(car|truck) 0
+0.04464849101063426
+(car|truck) 12
+0.9935776941080343
+(apple|banana) 0
+0.5003754227917153
+(apple|banana) 12
+0.9994311803968079
+(hot|cold) 0
+0.35260334442931124
+(hot|cold) 12
+0.9998219670637737
 ```
 
 </details>
