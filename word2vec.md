@@ -119,6 +119,8 @@ linear layer to predict the surrounding words.
 
 <img src="img/cartoons/word2vec_model.png">
 
+<details>
+
 ```bash
 tectonic \
     -o img/cartoons \
@@ -131,6 +133,8 @@ pdftoppm \
     img/cartoons/word2vec_model.pdf \
     img/cartoons/word2vec_model
 ```
+
+</details>
 
 For each training example, the model takes a center word and predicts a
 surrounding word. It then calculates the cross-entropy loss between the
@@ -222,29 +226,29 @@ with similar embeddings.
 Each embedding has 8 dimensions, making it difficult to visualize directly.
 Principal component analysis (PCA) finds the directions along which the
 embeddings vary the most. We use the first two principal components to
-represent the embeddings in two dimensions.
+visualize the embeddings in two dimensions.
 
 The figures below show the embeddings before training and after 12 epochs.
 Words are colored by their groups, but these labels were not used during
 training. All four plots use the same PCA projection and axis limits so we can
 compare how the embeddings moved.
 
-| Epoch 0 | Epoch 1 | Epoch 3 | Epoch 12 |
-|---|---|---|---|
-| <img src="img/word2vec_epoch_000.png"> | <img src="img/word2vec_epoch_001.png"> | <img src="img/word2vec_epoch_003.png"> | <img src="img/word2vec_epoch_012.png"> |
+| Epoch 0 | Epoch 1 |
+|---|---|
+| <img src="img/word2vec_epoch_000.png"> | <img src="img/word2vec_epoch_001.png"> | 
+| Epoch 3 | Epoch 12 |
+|---|---|
+<img src="img/word2vec_epoch_003.png"> | <img src="img/word2vec_epoch_012.png"> |
 
 ### Measuring similarity
 
-PCA is useful for visualizing embeddings, but it reduces the original 8
-dimensions to 2. Words that appear close together in the PCA plot are not
-necessarily the closest words in the original embedding space.
-
-We can measure similarity directly using cosine similarity, which compares the
-direction of two vectors:
+While PCA is useful for visualizing embeddings, it is possible for words to
+appear close together in the PCA plot are not necessarily the closest words in
+the original embedding space.  We can directly measure similarity directly
+using cosine similarity, which compares the direction of two vectors:
 
 $$
-\operatorname{similarity}(a,b) =
-\frac{a \cdot b}{|a||b|}
+S(a,b) = \frac{a \cdot b}{\|a\|\|b\|}
 $$
 
 Cosine similarity ranges from -1 to 1, where 1 indicates vectors pointing in
@@ -272,15 +276,13 @@ words from the same group had much higher similarities. The similarity between
 `cat` and `dog` increased from -0.277 to 0.862, while the similarity between
 `cat` and `car` decreased from 0.661 to 0.388.
 
-These results show that the model learned the relationships built into the
-synthetic data. However, high similarity does not necessarily mean that the
-embeddings capture relationships useful for other prediction tasks.
-
-The model also learned that `hot` and `cold` were nearly identical, with a
-cosine similarity of 1.000. Although these words have opposite meanings, they
-appeared in the same contexts in the training data. This shows that word2vec
-learned relationships based on how words were used, not necessarily what they
-meant.
+The model learned the relationships built into the synthetic data. However,
+high similarity does not necessarily mean that the embeddings capture
+relationships useful for other prediction tasks.  The model also learned that
+`hot` and `cold` were nearly identical, with a cosine similarity of 1.000.
+Although these words have opposite meanings, they appeared in the same contexts
+in the training data. This shows that word2vec learned relationships based on
+how words were used, not necessarily what they meant.
 
 <details>
 
