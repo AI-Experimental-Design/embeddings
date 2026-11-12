@@ -155,21 +155,175 @@ K-means correctly assigned 579 of the 600 samples (96.5%). The remaining 21
 samples were assigned to clusters dominated by other groups, likely because
 their feature values overlapped.
 
-
 One limitation of K-means is that requires the number of clusters in advance.
 Even if the data contain no distinct groups, k-means will divide the
 samples into $k$ clusters.
 
 ## Principal component analysis (PCA)
 
-PCA finds directions in the data along which the samples vary the most. The
-first principal component captures the greatest possible variance along a
-single direction. The second captures the greatest remaining variance in a
-direction perpendicular to the first. 
+With two-dimensional data, we can plot the samples and look for patterns such
+as might clusters of points or groups that separate from one another. We can
+do the same in three dimensions, but as the number of features increases,
+visualizing the data becomes more difficult.
 
-These directions are linear combinations of the original features. PCA does not
-know which features are important for the scientific question, only which
-combinations explain the most variation.
+One approach is to plot different pairs of features. Even if we could look at
+every possible pair, we would miss patterns that involve combinations of
+several features.
+
+| $x1$ v $x2$ | $x1$ v $x3$ | $x1$ v $x4$ | $x2$ v $x3$ |
+|-|-|-|-|
+| <img src="img/clusters_x1_x2.png">  | <img src="img/clusters_x1_x3.png"> | <img src="img/clusters_x1_x4.png"> | <img src="img/clusters_x2_x3.png"> |
+
+<details>
+
+```
+cat out/clusters.tsv \
+| python src/plot_scatter.py \
+    -o img/clusters_x1_x2.png \
+    --x x1 \
+    --y x2
+
+cat out/clusters.tsv \
+| python src/plot_scatter.py \
+    -o img/clusters_x1_x3.png \
+    --x x1 \
+    --y x3
+
+cat out/clusters.tsv \
+| python src/plot_scatter.py \
+    -o img/clusters_x1_x4.png \
+    --x x1 \
+    --y x4
+
+cat out/clusters.tsv \
+| python src/plot_scatter.py \
+    -o img/clusters_x2_x3.png \
+    --x x2 \
+    --y x3
+```
+
+</details>
+
+Principal component analysis (PCA) addresses this problem by finding new axes
+that combine the original features. These new axes are called principal
+components.
+
+In the regression and neural network modules, we combined input features using
+weights. For example, with two features, we can calculate a new value as:
+$z=w_1x_1+w_2x_2$.  This is called a linear combination. Each feature is
+multiplied by a weight, and the results are added together to produce a single
+number.  For a given set of weights, we can calculate $z$ for every sample in a
+dataset. Some combinations of weights will produce $z$ values that are similar
+across samples, while others will produce a wide range of values. The variance
+of these values measures how spread out the samples are along that combination.
+
+PCA finds the combination of weights that produces the greatest variance across
+the samples, with the constraint the the sum of the squared weights equals one.
+This combination defines the first principal component (PC1).
+
+| Points | High Variance | Medium Variance | Low Variance |
+|-|-|-|-|
+| <img src="img/football_points.png"> | <img src="img/football_points.1_0.png"> | <img src="img/football_points.0.71_0.71.png"> | <img src="img/football_points.0_1.png"> |
+
+<details>
+
+```bash
+cat data/football_points.tsv \
+| python src/plot_scatter.py \
+    -o img/football_points.png \
+    --x x1 \
+    --y x2
+
+cat data/football_points.tsv \
+| csvcut -t -c x1,x2 \
+| csvformat -T \
+| tail -n +2 \
+| awk -v w1=1 -v w2=0 '{print w1*$1 + w2*$2;}' \
+| python src/variance.py
+3.678521999058195
+
+cat data/football_points.tsv \
+| csvcut -t -c x1,x2 \
+| csvformat -T \
+| tail -n +2 \
+| awk -v w1=1 -v w2=0 '
+    BEGIN {print "z"}
+    {print w1*$1 + w2*$2}' \
+| python src/plot_hist.py \
+    --title "\$z=1.0x_1 + 0.0x_2\$, variance: 3.68" \ 
+    -c z \
+    -o img/football_points.1_0.png \
+    --xmin -10 \
+    --xmax 10 
+
+cat data/football_points.tsv \
+| csvcut -t -c x1,x2 \
+| csvformat -T \
+| tail -n +2 \
+| awk -v w1=0.71 -v w2=0.71 '{print w1*$1 + w2*$2;}' \
+| python src/variance.py
+1.952239572446618
+
+cat data/football_points.tsv \
+| csvcut -t -c x1,x2 \
+| csvformat -T \
+| tail -n +2 \
+| awk -v w1=0.71 -v w2=0.71 '
+    BEGIN {print "z"}
+    {print w1*$1 + w2*$2}' \
+| python src/plot_hist.py \
+    --title "\$z=0.71x_1 + 0.71x_2\$, variance: 1.95" \ 
+    -c z \
+    -o img/football_points.0.71_0.71.png \
+    --xmin -10 \
+    --xmax 10 
+
+cat data/football_points.tsv \
+| csvcut -t -c x1,x2 \
+| csvformat -T \
+| tail -n +2 \
+| awk -v w1=0.0 -v w2=1.0 '{print w1*$1 + w2*$2;}' \
+| python src/variance.py
+0.2095907315159936
+
+cat data/football_points.tsv \
+| csvcut -t -c x1,x2 \
+| csvformat -T \
+| tail -n +2 \
+| awk -v w1=0.0 -v w2=1.0 '
+    BEGIN {print "z"}
+    {print w1*$1 + w2*$2}' \
+| python src/plot_hist.py \
+    --title "\$z=0.0x_1 + 1.0x_2\$, variance: 0.21" \ 
+    -c z \
+    -o img/football_points.0_1.png \
+    --xmin -10 \
+    --xmax 10 
+```
+
+</details>
+
+Once PC1 is found, PCA looks for a second combination of weights that captures
+the greatest remaining variance. The second principal component (PC2) must be
+perpendicular to PC1, so it captures a different direction of variation.
+Additional components are found in the same way.
+
+For our dataset with four features, PCA produces four principal components.
+Each component is a different linear combination of the original features. If
+most of the variation is captured by the first two, we can represent each
+sample using only its PC1 and PC2 values, reducing the data from four
+dimensions to two while retaining much of the original variation.
+
+Because PCA orders the components by the variance they capture, PC1 and PC2
+provide the two-dimensional linear representation that retains the greatest
+possible variance. However, they do not necessarily capture most of the total
+variance.
+
+PCA does not attempt to identify groups or classify samples. If the groups
+differ along directions that explain a large amount of variance, they may
+separate in the PCA plot. If the differences between groups account for
+relatively little variance, PCA may not reveal them.
+
 
 ```bash
 csvcut -t -C group out/clusters.tsv \
@@ -194,13 +348,6 @@ python src/plot_scatter.py \
 ```
 
 <img src="img/clusters_pca.png" height="300">
-
-PCA is commonly used to visualize high-dimensional data, reduce the number of
-features used by other models, and identify major sources of variation. For
-example, in genomics, PCA can reveal population structure or technical
-differences between sequencing batches. By coloring samples according to known
-characteristics, we can sometimes identify the factors driving the variation
-captured by each component.
 
 ## UMAP
 
