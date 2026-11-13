@@ -217,7 +217,7 @@ dataset. Some combinations of weights will produce $z$ values that are similar
 across samples, while others will produce a wide range of values. The variance
 of these values measures how spread out the samples are along that combination.
 
-| Points | $z=1.0x_1 + 0.0x_2\$ Variance=3.68 | $z=0.71x_1 + 0.71x_2\ Variance=1.95 | $z=0.0x_1 + 1.0x_2\ Variance=0.21 |
+| Points | $z=1.0x_1 + 0.0x_2$ Variance=3.68 | $z=0.71x_1 + 0.71x_2$ Variance=1.95 | $z=0.0x_1 + 1.0x_2$ Variance=0.21 |
 |-|-|-|-|
 | <img src="img/football_points.png"> | <img src="img/football_points.1_0.png"> | <img src="img/football_points.0.71_0.71.png"> | <img src="img/football_points.0_1.png"> |
 
@@ -359,7 +359,7 @@ relationships. The two main parameters guide UMAPs behavior are:
   lower-dimensional representation.
 
 |`n_neighbors`=15 `min_dist`=0.1 | `n_neighbors`=30 `min_dist`=0.1  |`n_neighbors`=15 `min_dist`=0.5 | 
-| <img src="img/clusters_umap.png" height="300"> | <img src="img/clusters_umap.n_neighbors_30.png" height="300"> | <img src="img/clusters_umap.min_dist_0.5.png" height="300"> |
+| <img src="img/clusters_umap.png" height="300"> | <img src="img/clusters_umap_n_neighbors_30.png" height="300"> | <img src="img/clusters_umap.min_dist_0.5.png" height="300"> |
 
 <details>
 
