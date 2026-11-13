@@ -69,30 +69,27 @@ sample0271	3.1104	2.5917	-1.3981	-1.5436	B
 
 ## K-means clustering
 
+
 Clustering groups samples based on their similarity without knowing which
-groups they belong to. One of the simplest approaches is k-means.  K-means
-begins by placing $k$ cluster centers, called centroids, in the feature space.
-It then repeatedly performs two steps:
-1. Assign each sample to the nearest centroid.
-2. Move each centroid to the mean position of the samples assigned to it.
+groups they belong to. One of the simplest approaches is k-means. K-means
+begins by placing $k$ cluster centers, called centroids, then repeatedly
+assigns each sample to the nearest centroid and move each centroid to the mean
+position of the samples assigned to it.  These steps continue until the
+assignments stop changing or the centroids move very little.
 
-These steps continue until the assignments stop changing or the centroids move
-very little.
+Unlike the neural networks we trained earlier, k-means does not use gradient
+descent or backpropagation. Instead, it alternates between assigning samples to
+clusters and updating their centroids to reduce the distances between samples
+and their assigned centers.
 
-The algorithm attempts to minimize the sum of squared distances between each
-sample and its assigned centroid:
+The goal is to find clusters where samples are as close as possible to their
+assigned centroids. K-means measures this using the sum of squared distances
+between each sample and its centroid, which it attempts to minimize.
 
-$$
-L = \sum_{i=1}^{n} \|x_i - \mu_{c_i}\|^2
-$$
+We run k-means with $k=3$, matching the number of groups used to generate the
+data.
 
-Where $x_i$ is the feature vector for sample $i$, and $\mu_{c_i}$ is the
-centroid of the cluster assigned to that sample.
-
-k-means does not use gradient descent or backpropagation. It alternates between
-assigning samples to clusters and updating the centroids.
-
-We run k-means with $k=3$, matching the number of groups used to generate the data.
+<details>
 
 ```bash
 python src/kmeans.py \
@@ -114,7 +111,10 @@ sample0498	1	C
 sample0483	1	C
 sample0387	2	B
 sample0271	2	B
+
 ```
+
+</details>
 
 We can compare these assignments with the known groups. If the groups are well
 separated in feature space, k-means should recover much of the original
@@ -217,11 +217,7 @@ dataset. Some combinations of weights will produce $z$ values that are similar
 across samples, while others will produce a wide range of values. The variance
 of these values measures how spread out the samples are along that combination.
 
-PCA finds the combination of weights that produces the greatest variance across
-the samples, with the constraint the the sum of the squared weights equals one.
-This combination defines the first principal component (PC1).
-
-| Points | High Variance | Medium Variance | Low Variance |
+| Points | $z=1.0x_1 + 0.0x_2\$ Variance=3.68 | $z=0.71x_1 + 0.71x_2\ Variance=1.95 | $z=0.0x_1 + 1.0x_2\ Variance=0.21 |
 |-|-|-|-|
 | <img src="img/football_points.png"> | <img src="img/football_points.1_0.png"> | <img src="img/football_points.0.71_0.71.png"> | <img src="img/football_points.0_1.png"> |
 
@@ -303,27 +299,22 @@ cat data/football_points.tsv \
 
 </details>
 
-Once PC1 is found, PCA looks for a second combination of weights that captures
-the greatest remaining variance. The second principal component (PC2) must be
-perpendicular to PC1, so it captures a different direction of variation.
-Additional components are found in the same way.
+PCA finds the combination of weights that produces the greatest variance across
+the samples, with the constraint the the sum of the squared weights equals one.
+This combination defines the first principal component (PC1).
 
-For our dataset with four features, PCA produces four principal components.
-Each component is a different linear combination of the original features. If
-most of the variation is captured by the first two, we can represent each
-sample using only its PC1 and PC2 values, reducing the data from four
-dimensions to two while retaining much of the original variation.
+Once PC1 is found, PCA finds a second combination of weights that captures the
+greatest remaining variance while being perpendicular to PC1. This process
+continues for each additional component.
 
-Because PCA orders the components by the variance they capture, PC1 and PC2
-provide the two-dimensional linear representation that retains the greatest
-possible variance. However, they do not necessarily capture most of the total
-variance.
+For our dataset with four features, PCA produces four principal components. We
+can use just the first two to represent each sample in two dimensions,
+retaining as much variance as possible with two linear components, although
+these two componets do no neccesaryily cature a majoirty of the variantce. 
 
-PCA does not attempt to identify groups or classify samples. If the groups
-differ along directions that explain a large amount of variance, they may
-separate in the PCA plot. If the differences between groups account for
-relatively little variance, PCA may not reveal them.
+<img src="img/clusters_pca.png" height="300">
 
+<details>
 
 ```bash
 csvcut -t -C group out/clusters.tsv \
@@ -347,58 +338,78 @@ python src/plot_scatter.py \
     --groups out/cluster_groups.tsv
 ```
 
-<img src="img/clusters_pca.png" height="300">
+</details>
+
+PCA does not attempt to identify groups or classify samples. If the groups
+differ along directions that explain a large amount of variance, they may
+separate in the PCA plot. If the differences between groups account for
+relatively little variance, PCA may not reveal them.
 
 ## UMAP
 
 Uniform Manifold Approximation and Projection (UMAP) is another method for
-reducing high-dimensional data to two or three dimensions.  Unlike PCA, UMAP is
-nonlinear. It begins by identifying nearby samples in the original feature
-space and constructs a lower-dimensional representation that attempts to
-preserve these local relationships.
-
-UMAP is commonly used to visualize high-dimensional data, including single-cell
-RNA sequencing data and learned embeddings.  Two parameters have a particularly
-large effect on the resulting visualization:
-
+reducing high-dimensional data to two or three dimensions. UMAP begins by
+identifying nearby samples in the original feature space and constructs a
+lower-dimensional representation that attempts to preserve these local
+relationships. The two main parameters guide UMAPs behavior are:
 - `n_neighbors` controls how many nearby samples are considered when
   constructing the representation. Smaller values emphasize local
   relationships, while larger values incorporate broader structure.
 - `min_dist` controls how tightly samples can be packed together in the
   lower-dimensional representation.
 
-We run UMAP on the same four-dimensional dataset used for PCA.
+|`n_neighbors`=15 `min_dist`=0.1 | `n_neighbors`=30 `min_dist`=0.1  |`n_neighbors`=15 `min_dist`=0.5 | 
+| <img src="img/clusters_umap.png" height="300"> | <img src="img/clusters_umap.n_neighbors_30.png" height="300"> | <img src="img/clusters_umap.min_dist_0.5.png" height="300"> |
+
+<details>
 
 ```bash
-python src/umap.py \
+python src/run_umap.py \
     -i out/clusters_features.tsv \
     -o out/clusters_umap.tsv \
     --n_neighbors 15 \
     --min_dist 0.1
-```
 
-The output contains two coordinates for each sample. We can plot them using the same plotting script.
-
-```bash
 python src/plot_scatter.py \
     -i out/clusters_umap.tsv \
     -o img/clusters_umap.png \
     --x umap1 \
     --y umap2 \
     --groups out/cluster_groups.tsv
+
+python src/run_umap.py \
+    -i out/clusters_features.tsv \
+    -o out/clusters_umap_n_neighbors_30.tsv \
+    --n_neighbors 30 \
+    --min_dist 0.1
+
+python src/plot_scatter.py \
+    -i out/clusters_umap_n_neighbors_30.tsv \
+    -o img/clusters_umap_n_neighbors_30.png \
+    --x umap1 \
+    --y umap2 \
+    --groups out/cluster_groups.tsv
+
+python src/run_umap.py \
+    -i out/clusters_features.tsv \
+    -o out/clusters_umap.min_dist_0.5.tsv \
+    --n_neighbors 15 \
+    --min_dist 0.5
+
+python src/plot_scatter.py \
+    -i out/clusters_umap.min_dist_0.5.tsv \
+    -o img/clusters_umap.min_dist_0.5.png \
+    --x umap1 \
+    --y umap2 \
+    --groups out/cluster_groups.tsv
+
 ```
 
-<img src="img/clusters_umap.png" height="300">
+</details>
 
-PCA and UMAP may produce different arrangements of the same samples because
-they optimize different properties of the data.  PCA attempts to preserve
-directions of large variance. UMAP attempts to preserve local neighborhood
-relationships. Neither method uses the group labels.
-
-One important limitation is that distances in a UMAP plot do not necessarily
-correspond to distances in the original feature space. Two groups that appear
-far apart in a UMAP visualization are not necessarily equally far apart in the
-original data.
+Distances in a UMAP plot do not necessarily correspond to distances in the
+original feature space. Two groups that appear far apart in a UMAP
+visualization are not necessarily equally far apart in the original data.
 
 ## When structure is misleading
 
