@@ -359,6 +359,7 @@ relationships. The two main parameters guide UMAPs behavior are:
   lower-dimensional representation.
 
 |`n_neighbors`=15 `min_dist`=0.1 | `n_neighbors`=30 `min_dist`=0.1  |`n_neighbors`=15 `min_dist`=0.5 | 
+|-|-|-|
 | <img src="img/clusters_umap.png" height="300"> | <img src="img/clusters_umap_n_neighbors_30.png" height="300"> | <img src="img/clusters_umap.min_dist_0.5.png" height="300"> |
 
 <details>
