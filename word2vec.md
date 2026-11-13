@@ -269,17 +269,19 @@ training.
 
 | Epoch 0 | Epoch 1 |
 |---|---|
-| <img src="img/word2vec_epoch_000.png"> | <img src="img/word2vec_epoch_001.png"> | 
+| <img src="img/word2vec_epoch_000.png"> | <img src="img/word2vec_epoch_001.png"> |
+
 | Epoch 3 | Epoch 12 |
 |---|---|
-<img src="img/word2vec_epoch_003.png"> | <img src="img/word2vec_epoch_012.png"> |
+| <img src="img/word2vec_epoch_003.png"> | <img src="img/word2vec_epoch_012.png"> |
+
 
 ### Measuring similarity
 
-While PCA is useful for visualizing embeddings, it is possible for words to
-appear close together in the PCA plot are not necessarily the closest words in
-the original embedding space.  We can directly measure similarity directly
-using cosine similarity, which compares the direction of two vectors:
+While PCA is useful for visualizing embeddings, words that appear close
+together in the PCA plot are not necessarily the closest words in the original
+embedding space. We can measure similarity using cosine similarity, which
+compares the direction of two vectors.
 
 $$
 S(a,b) = \frac{a \cdot b}{\|a\|\|b\|}

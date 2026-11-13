@@ -1,20 +1,25 @@
 
 #!/usr/bin/env python3
-"""Plot two numerical columns from a TSV file.
+"""Plot two numerical columns from a TSV file or stdin.
 
 The first column identifies each point. An optional groups file
 maps identifiers to group names for coloring.
 
-Example:
+Examples:
     python src/plot_scatter.py \
         -i out/synthetic/epoch_12_pca.tsv \
         -o img/word2vec_epoch_012.png \
         --groups src/word2vec_groups.tsv \
         --labels
+
+    cat out/clusters_pca.tsv | python src/plot_scatter.py \
+        -o img/clusters_pca.png \
+        --groups out/cluster_groups.tsv
 """
 
 import argparse
 import csv
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -24,13 +29,18 @@ rcParams["font.family"] = "Arial"
 
 
 def read_tsv(path):
+    if path == "-":
+        return list(csv.DictReader(sys.stdin, delimiter="\t"))
     with open(path) as f:
         return list(csv.DictReader(f, delimiter="\t"))
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", required=True)
+    parser.add_argument(
+        "-i", "--input", default="-",
+        help="Input TSV file (default: stdin)"
+    )
     parser.add_argument("-o", "--output", required=True)
     parser.add_argument("--x", default="pc1")
     parser.add_argument("--y", default="pc2")
