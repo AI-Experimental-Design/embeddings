@@ -1,0 +1,12 @@
+label	group
+cat	animals
+dog	animals
+horse	animals
+car	vehicles
+truck	vehicles
+bus	vehicles
+apple	fruits
+banana	fruits
+orange	fruits
+hot	temperature
+cold	temperature
