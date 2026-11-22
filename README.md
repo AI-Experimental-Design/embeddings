@@ -1,36 +1,52 @@
-# Embeddings
+# Embeddings and Self-Supervised Learning
 
-*Week 7 of [AI-Integrated Experimental Design](https://github.com/AI-Experimental-Design).*
+## The question we are asking
 
-Last week's networks learned their features from labeled data. Labels are
-expensive, and unlabeled sequence is cheap. This week asks what a model can
-learn from sequence alone, before it sees any labels. We train a small DNA
-model by hiding bases and asking it to fill them in, look at the
-representations it learns, and use it to score variants with no labels at all.
-The same model shows the main limit of the approach. It learns what is common,
-and what is common is not always what is functional, so a learned
-representation still has to be tested against the biology.
+Embeddings allow models to represent words, DNA sequences, and other data as vectors of numbers that capture relationships between them. But how do models learn these representations, and how do we know whether the relationships they capture are meaningful?
 
-- [Embeddings and self-supervised pretraining](./embeddings.md)
-    - one-hot encoding versus learned embeddings
-    - masked prediction
-    - softmax and cross-entropy for four classes
-    - contextual embeddings and PCA
-- [Zero-shot variant scoring](./zero-shot.md)
-    - log-likelihood ratios
-    - scoring every variant without labels
-    - unexpected is not the same as damaging
-    - choosing what a benchmark counts
+In these four modules, we explore how models learn embeddings from data without externally supplied labels. We begin with word2vec, then examine how unsupervised methods identify structure in data. Next, we train a model to predict missing DNA bases and learn contextual embeddings. Finally, we use the pretrained model to score genetic variants and examine why a model that learns predictable sequence patterns does not necessarily learn biological function.
+
+## Modules
+
+### [Word2vec](./word2vec.md)
+
+- Learning embeddings by predicting surrounding words
+- Training a word2vec model on synthetic sentences
+- Visualizing embeddings with PCA
+- Measuring relationships using cosine similarity
+- Limitations of fixed embeddings
+
+### [Unsupervised learning](./unsupervised-learning.md)
+
+- K-means clustering
+- Principal component analysis (PCA)
+- Uniform Manifold Approximation and Projection (UMAP)
+- Identifying structure without labels
+- Interpreting clusters and patterns in high-dimensional data
+
+### [Masked prediction and contextual embeddings](./masked-prediction.md)
+
+- Learning from sequences using masked prediction
+- Fixed versus contextual embeddings
+- Convolutional neural networks for DNA sequences
+- Training and evaluating a masked-base prediction model
+- Examining learned contextual representations
+
+### [Zero-shot variant scoring](./zero-shot.md)
+
+- Scoring variants using a pretrained model
+- Log-likelihood ratios and sequence predictability
+- Comparing predicted scores with functional effects
+- Evaluating performance using AUC
+- Why unexpected variants are not necessarily damaging
 
 ## Reading
 
 ### Animal communication
 
-- Sainburg, Thielk and Gentner 2020. Finding, visualizing, and quantifying latent structure across diverse animal vocal repertoires. *PLoS Computational Biology* 16(10):e1008228. Learned embedding spaces across 29 species.
-- Hagiwara 2023. AVES: Animal Vocalization Encoder based on Self-Supervision. *ICASSP 2023*. Self-supervised pretraining for bioacoustics.
+- Sainburg, Thielk and Gentner (2020). [Finding, visualizing, and quantifying latent structure across diverse animal vocal repertoires](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1008228). *PLoS Computational Biology* 16(10):e1008228.
+- Hagiwara (2023). [AVES: Animal Vocalization Encoder based on Self-Supervision](https://arxiv.org/abs/2210.14493). *ICASSP 2023*.
 
 ### Genetics
 
-- Rives et al. 2021. Biological structure and function emerge from scaling unsupervised learning to 250 million protein sequences. *PNAS* 118:e2016239118. Structure appearing in a learned embedding.
-- Meier et al. 2021. Language models enable zero-shot prediction of the effects of mutations on protein function. *NeurIPS 2021*. ESM-1v, variant effects with no labels.
-- Benegas, Batra and Song 2023. DNA language models are powerful predictors of genome-wide variant effects. *PNAS* 120:e2311219120. GPN, self-supervised pretraining on plant genomes.
+- Rives et al. (2021). [Biological structure and function emerge from scaling unsupervised learning to 250 million protein sequences](https://www.pnas.org/doi/10.1073/pnas.2016239118). *PNAS* 118
