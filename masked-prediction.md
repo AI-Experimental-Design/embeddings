@@ -4,9 +4,12 @@
 
 After this module you should be able to
 
-1. Explain how masked prediction allows models to learn from sequences without externally supplied labels.
-2. Describe how convolutional neural networks learn contextual representations of DNA sequences.
-3. Evaluate whether a model's ability to predict sequence patterns provides evidence that those patterns are biologically functional.
+1. Explain how masked prediction allows models to learn from sequences without
+   externally supplied labels.
+2. Describe how convolutional neural networks learn contextual representations
+   of DNA sequences.
+3. Evaluate whether a model's ability to predict sequence patterns provides
+   evidence that those patterns are biologically functional.
 
 ## Introduction
 
@@ -448,7 +451,7 @@ cat out/pretrain.tsv \
 |---|---|---|
 | <img src="img/pretrain_TATA.png"> | <img src="img/pretrain_GC.png"> | <img src="img/pretrain_polyA.png"> |
 
-After 12 epochs, accuracy in the randomly background remained near 25%, as
+After 12 epochs, accuracy in the random background remained near 25%, as
 expected when guessing among four equally likely bases. For the inserted
 patterns, the model correctly predicted 95.8% of masked bases in TATA boxes,
 95.1% in GC boxes, and 100% in poly-A runs.  The model learned to predict bases
@@ -461,7 +464,7 @@ biological function.
 The ultimate goal of pretraining was to learn contextual embeddings that
 capture relationships between DNA sequences. With a trained model, we can
 examine these embeddings to see whether sequences containing similar patterns
-have similar representations, allowing what the model learns about one sequence
+have similar representations, potentially allowing what the model learns about one sequence
 to be applied to others.
 
 To test this, we generated 200 sequences for each of four different patterns.
@@ -568,10 +571,8 @@ done
 |---|---|---|
 | <img src="img/contextual_pca_0.png"> | <img src="img/contextual_pca_1.png"> | <img src="img/contextual_pca_12.png"> |
 
-Before training, the randomly initialized model already separated some sequence
-patterns, particularly `GC` and poly-`T`, but the `TATA` and poly-`A` groups
-overlapped considerably. After just one epoch of training, all four groups
-occupied distinct regions of the embedding space.
+PCA was fitted separately at each epoch, so we can compare how much the groups
+overlap within each plot, but not their absolute positions across plots.
 
 We also used cosine similarity to compare the embeddings of two TATA sequences
 and a TATA sequence with a poly-A sequence. We repeated the comparisons using
@@ -634,9 +635,15 @@ Epoch 12
 
 ## Questions
 
-1. Train the model with masking rates of 5%, 15%, and 30%, keeping the training
-   data the same. Compare the training loss and masked-base prediction
-accuracy. How does the masking rate affect what the model can learn? Are the
-differences the same for random background sequences and inserted elements?
+1. Train models with convolutional kernel sizes of 3, 5, and 9, keeping the
+   training data the same. Compare masked-base prediction accuracy in the
+   random background and inserted patterns. How does the amount of surrounding
+   sequence available to the model affect prediction accuracy? Are some
+   patterns more sensitive to context width than others?
 
-2. Train models with convolutional kernel sizes of 3, 5, and 9, keeping the training data the same. Compare masked-base prediction accuracy for background and inserted patterns. How does the amount of surrounding sequence available to the model affect prediction accuracy?
+2. Compare the PCA plots of contextual embeddings from epochs 0, 1, and 12.
+   How well do the four groups separate before and after training? Use cosine
+   similarity to compare two sequences containing the same pattern and two
+   containing different patterns across these epochs. Do the similarities
+   support what you observed in the PCA plots? Would you expect the same result
+   from other pairs of sequences, and how could you test that?
