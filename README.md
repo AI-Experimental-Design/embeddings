@@ -32,14 +32,6 @@ In these four modules, we explore how models learn embeddings from data without 
 - Training and evaluating a masked-base prediction model
 - Examining learned contextual representations
 
-### [Zero-shot variant scoring](./zero-shot.md)
-
-- Scoring variants using a pretrained model
-- Log-likelihood ratios and sequence predictability
-- Comparing predicted scores with functional effects
-- Evaluating performance using AUC
-- Why unexpected variants are not necessarily damaging
-
 ## Reading
 
 ### Animal communication
