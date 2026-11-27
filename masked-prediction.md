@@ -27,9 +27,9 @@ ability to transfer what it learns between related words.
 
 To examine this effect, we generated a set of 5,000 sentences that used `bank`
 as a financial institution and another set as the side of a river. We then
-trained word2vec on 5,000 sentences containing different proportions of these
-two contexts and measured the cosine similarity between `bank` and `account` or
-`shore`.
+trained word2vec on datasets of 5,000 sentences containing different
+proportions of these two contexts and measured the cosine similarity between
+`bank` and `account` or `shore`.
 
 For example, when word2vec was trained on just financial sentences, `bank` and
 `account` had a cosine similarity of 0.31. When the training data were changed
@@ -43,7 +43,7 @@ increased, the similarity between `bank` and `account` increased from -0.25 to
 
 | Bank–Account Similarity | Bank–Shore Similarity |
 |-|-|
-| <img src="img/bank_account.png"> | <img src="img/bank_account.png"> |
+| <img src="img/bank_account.png"> | <img src="img/bank_shore.png"> |
 
 These results show how different contexts influence a word's embedding. Because
 word2vec learns only one embedding per word, the representation must
@@ -177,7 +177,7 @@ cat out/bank_similarity.tsv \
     -t "Bank–Shore Similarity"
 ```
 
-<details>
+</details>
 
 ## Contextual embeddings
 
@@ -207,14 +207,14 @@ capture biologically meaningful patterns.
 
 ## Data
 
-We will generate randomly DNA sequences containing one of three different
+We will generate random DNA sequences containing one of three different
 patterns inserted at a random position.
 
 | Pattern    | Example    |
 |-|-|
 | TATA box   | `TATAAA`   |
 | GC box     | `GGGCGG`   |
-| Poly-A run | `AAAAAAAA` |
+| Poly-A run | `AAAAAAAAAA` |
 
 These patterns occur in real genomes, but their presence alone does not
 establish biological function. In our synthetic dataset, none of the patterns
@@ -244,7 +244,7 @@ wrote out/synthetic_genome: 10000 sequences of 200 bp
 ## Masked prediction
 
 In word2vec, the model was trained to predict surrounding words. Masked
-prediction hides part of the input, and the model predictsg what was removed.
+prediction hides part of the input, and the model predicts what was removed.
 
 For example, consider the sequence:
 
@@ -268,216 +268,375 @@ predictions:
 | `G` | 0.04 |
 | `T` | 0.09 |
 
-In this example, the correct answer is `A`, and the model assigns it a
-probability of 0.82. Cross-entropy loss measures how well the predicted
-probabilities match the correct answer. Since only one base is correct, the
-loss is the negative log of the probability assigned to that base:
-$L = -\log(0.82) = 0.20$.  If the model had assigned `A` a probability of 0.05,
-the loss would have been much larger ($L=3.00$). This means the model receives
-a larger penalty when it assigns a low probability to the correct base.
+The correct answer is `A`. The model assigned `A` a probability of 0.82, which
+is a fairly confident correct prediction. Cross-entropy loss measures how well
+the predicted probabilities match the correct answer. Since only one base is
+correct, the loss is the negative log of the probability assigned to that base:
+$L = -\log(0.82) = 0.20$.
 
-The model then uses backpropagation to calculate how each weight contributed to
-the loss. Gradient descent updates the weights in the convolutional and output
-layers to reduce the loss, increasing the probability of the correct base. This
-process is repeated across many masked positions and sequences, allowing the
-model to learn which bases are likely to appear in different sequence contexts.
+If the model had assigned `A` a probability of 0.05, making it very confident
+in an incorrect answer, the loss would have been much larger ($L = -\log(0.05)
+= 3.00$). If `A` had been assigned a probability of 0.51, a less confident
+correct prediction, the loss would have been $L = -\log(0.51) = 0.67$.
 
+Cross-entropy gives a smaller penalty when the model assigns a higher
+probability to the correct answer and a larger penalty when it assigns a lower
+probability.
+
+The model then uses backpropagation to calculate gradients for its learned
+weights. As in the neural network module, these gradients are used to update
+the weights to reduce the training loss. This process is repeated across many
+masked positions and sequences, allowing the model to learn which bases are
+likely to appear in different sequence contexts.
 
 ## Model architecture
 
-We will use a convolutional neural network to predict masked DNA bases. In the
-convolution module, we learned that convolutional filters identify patterns in
-nearby positions. By stacking convolutional layers, the model can combine
+The model uses a convolutional neural network to predict masked DNA bases. In
+the convolution module, we learned that convolutional filters identify patterns
+in nearby positions. By stacking convolutional layers, the model can combine
 information from increasingly large regions of the input.
 
 Our model has four parts:
 
-1. **Embedding layer.** Each DNA base (`A`, `C`, `G`, `T`) and the mask token (`?`) is assigned a learned embedding containing 8 numbers.
-2. **First convolutional layer.** Applies 64 filters, each examining 9 neighboring positions, to produce 64 values at every position.
-3. **Second convolutional layer.** Applies another 64 filters to the output of the first layer, combining information from a larger region of the sequence.
-4. **Output layer.** Converts the 64 values at each position into four scores, one for each DNA base. Softmax converts these scores into probabilities.
+1. Embedding layer. Each DNA base (`A`, `C`, `G`, `T`) and the mask token (`?`)
+   is assigned a learned embedding containing 8 numbers.
+2. First convolutional layer. Each of the 64 filters calculates a weighted sum
+   of the embeddings from 9 neighboring bases centered on the target position,
+   adds a bias, and produces one value. Together, the 64 filters produce a
+   vector of 64 values at each position.
+3. Second convolutional layer. Applies another 64 filters to the output of
+   the first layer, combining information from a larger region of the sequence.
+4. Output layer. Converts the 64 values at each position into four scores,
+   one for each DNA base. Softmax converts these scores into probabilities.
+
+![Masked DNA model: embedding lookup, two convolutions, and masked-position prediction](img/masked_dna_first_convolution.svg)
 
 ### Embedding layer
 
-The model begins by converting each DNA base into an integer: `A=0`, `C=1`, `G=2`, `T=3`, and `?=4`.
+The model begins by converting each DNA base into an integer: `A=0`, `C=1`,
+`G=2`, `T=3`, and `?=4`.
 
-These integers are used to look up an embedding for each token in a table containing five rows and eight columns. Each row contains eight learned values, just like the word embeddings in word2vec.
+These integers are used to look up an embedding for each token in a table
+containing five rows and eight columns. Each row contains eight learned values,
+just like the word embeddings in word2vec.
 
-At this point, every occurrence of `A` has the same embedding, regardless of its surrounding sequence. The embeddings become contextual only after passing through the convolutional layers.
+At this point, every occurrence of `A` has the same embedding, regardless of
+its surrounding sequence. The embeddings become contextual only after passing
+through the convolutional layers.
 
 ### Convolutional layers
 
-The first convolutional layer applies 64 filters with a kernel size of 9. Each filter combines the embeddings from a window of nine positions to produce one value. Together, the 64 filters produce a vector of 64 values at every position.
+The first convolutional layer applies 64 filters with a kernel size of 9. Each
+filter combines the embeddings from a window of nine positions to produce one
+value. Together, the 64 filters produce a vector of 64 values at every
+position.
 
-The second convolutional layer applies another set of 64 filters to these vectors. Because each position already contains information from its neighbors, the second layer can combine information from a larger region. With two layers of kernel size 9, each output position can use information from up to 17 positions in the original sequence.
+The second convolutional layer applies another set of 64 filters to these
+vectors. Because each position already contains information from its neighbors,
+the second layer can combine information from a larger region. With two layers
+of kernel size 9, each output position can use information from up to 17
+positions in the original sequence.
 
 The model applies a ReLU activation after each convolutional layer.
 
-The resulting 64 values at each position form its contextual embedding. Unlike the initial embedding lookup, this representation depends on the surrounding bases. Two occurrences of the same base can therefore have different contextual embeddings.
+The resulting 64 values at each position form its contextual embedding. Unlike
+the initial embedding lookup, this representation depends on the surrounding
+bases. Two occurrences of the same base can therefore have different contextual
+embeddings.
 
 ### Output layer
 
-The output layer converts the 64-dimensional contextual embedding at each position into four scores, one for each DNA base.
+The output layer converts the 64-dimensional contextual embedding at each
+position into four scores, one for each DNA base.
 
-This is implemented as a convolution with a kernel size of 1, which means it combines the 64 values at each position without mixing information from neighboring positions.
+This is implemented as a convolution with a kernel size of 1, which means it
+combines the 64 values at each position without mixing information from
+neighboring positions.
 
 Softmax converts the four scores into probabilities for `A`, `C`, `G`, and `T`.
 
-The model produces predictions for every position in the sequence, but only the masked positions contribute to the training loss.
+The model produces predictions for every position in the sequence, but only the
+masked positions contribute to the training loss.
 
-During training, cross-entropy loss measures the probability assigned to the correct base at each masked position. Backpropagation and gradient descent update the embedding table, convolutional filters, and output layer to improve these predictions.
+### Model parameters
 
-As training progresses, the model learns both the initial embeddings for individual bases and how to combine them with surrounding sequence information. The goal is to produce contextual representations that help predict missing bases.
+Each layer contains weights that are learned during training. We can count
+these parameters based on the number of embeddings, filters, and weights in
+each layer.
+- Embedding layer: 40 parameters, with 5 tokens each having 8 embedding values.
+- First convolutional layer: 4,672 parameters, with 64 filters, each having 72
+  weights (9 positions × 8 embedding values) and a bias.
+- Second convolutional layer: 36,928 parameters, with 64 filters, each having
+  576 weights (9 positions × 64 values) and a bias.
+- Output layer: 260 parameters, with 4 sets of 64 weights and a bias.
 
-## Model architecture
+Together, the model has 41,900 learned parameters. All of these are updated
+during training to improve predictions of missing DNA bases.
 
-We will use a convolutional neural network to predict the masked bases.
+## Pretraining
 
-In the convolution module, we learned that convolutional filters identify
-patterns in nearby positions. By stacking convolutional layers, the model can
-combine information from increasingly large regions of the input.
+We train the model to predict missing DNA bases, but predicting bases is not
+our ultimate goal. We want the model to learn representations of DNA sequences
+that might be useful for other tasks, such as predicting the effects of genetic
+variants. Training a model on one task before using it for another is called
+pretraining.
 
-Our model will have three main parts:
-1. Input encoding. Each base is represented by a one-hot vector, with an
-   additional representation for masked positions.
-2. Convolutional layers. The model applies filters across the sequence to
-   combine information from neighboring bases. The output at each position is a
-   contextual representation of that position.
-3. Output layer. A linear layer converts each contextual representation into
-   four scores, one for each possible DNA base. Softmax converts these scores
-into probabilities.
-
-The model produces predictions for every position, but only the masked
-positions contribute to the training loss.
-
-The convolutional layers are important because the model must use neighboring
-bases to predict a missing base. For example, when predicting a masked base
-within a TATA box, the surrounding sequence may provide enough information to
-identify the expected pattern.
-
-The output of the convolutional layers also provides an embedding for each
-position. Unlike word2vec, where each word has one fixed embedding, these
-representations depend on the surrounding sequence.
-
-<img src="img/cartoons/word2vec_model.png">
-
-<details>
-
-```bash
-tectonic \
-    -o img/cartoons \
-    img/cartoons/masked_model.tex
-
-pdftoppm \
-    -png \
-    -r 150 \
-    -singlefile \
-    img/cartoons/masked_model.pdf \
-    img/cartoons/masked_model
-```
-
-</details>
-## Training
-
-We train the model on the synthetic DNA sequences, randomly masking positions
-and asking the model to predict the original bases.
-
-The model uses cross-entropy loss and gradient descent to update its weights.
-During training, the convolutional filters can learn sequence patterns that
-help predict missing bases.
+We train the model on synthetic DNA sequences, setting aside 10% for
+validation. During training, we randomly mask 15% of positions and ask the
+model to predict the original bases. The model's parameters are updated using
+cross-entropy loss, and after each epoch, we measure masked-base accuracy on
+the validation sequences, including accuracy within each inserted pattern.
 
 <details>
 
 ```bash
 python src/pretrain.py \
-    --data out/synthetic_genome \
+    --genome out/synthetic_genome \
     --epochs 12 \
-    --out out/pretrain
+    --log out/pretrain.tsv \
+    --out out/pretrain.pt
+9000 training and 1000 validation sequences, 41900 parameters
+epoch 00 loss=nan masked acc: all=0.258 background=0.244 TATA=0.527 GC=0.032 polyA=0.801  (1s)
+epoch 01 loss=1.3655 masked acc: all=0.286 background=0.251 TATA=0.805 GC=0.747 polyA=1.000  (9s)
+epoch 02 loss=1.3582 masked acc: all=0.288 background=0.250 TATA=0.931 GC=0.834 polyA=0.997  (18s)
+epoch 03 loss=1.3536 masked acc: all=0.287 background=0.247 TATA=0.952 GC=0.889 polyA=0.999  (27s)
+epoch 04 loss=1.3472 masked acc: all=0.292 background=0.252 TATA=0.937 GC=0.933 polyA=1.000  (35s)
+epoch 05 loss=1.3457 masked acc: all=0.291 background=0.250 TATA=0.958 GC=0.933 polyA=1.000  (44s)
+epoch 06 loss=1.3450 masked acc: all=0.290 background=0.250 TATA=0.964 GC=0.917 polyA=0.997  (53s)
+epoch 07 loss=1.3443 masked acc: all=0.290 background=0.249 TATA=0.960 GC=0.957 polyA=1.000  (61s)
+epoch 08 loss=1.3439 masked acc: all=0.287 background=0.246 TATA=0.956 GC=0.935 polyA=1.000  (70s)
+epoch 09 loss=1.3429 masked acc: all=0.288 background=0.247 TATA=0.952 GC=0.947 polyA=1.000  (79s)
+epoch 10 loss=1.3420 masked acc: all=0.287 background=0.246 TATA=0.964 GC=0.943 polyA=1.000  (88s)
+epoch 11 loss=1.3422 masked acc: all=0.287 background=0.246 TATA=0.977 GC=0.947 polyA=1.000  (97s)
+epoch 12 loss=1.3418 masked acc: all=0.288 background=0.248 TATA=0.958 GC=0.951 polyA=1.000  (105s)
+wrote out/pretrain.pt
+
+for col in all background TATA GC polyA; do
+    cat out/pretrain.tsv \
+        | csvcut -t -c epoch,$col \
+        | csvformat -T \
+        | tail -n +2 \
+        | python src/plot_line.py \
+            -o img/pretrain_${col}.png \
+            --line_style "o-" \
+            --point_size 3 \
+            -x "Epoch" \
+            -y "Masked-base accuracy" \
+            -t "$col"
+done
+
+cat out/pretrain.tsv \
+    | csvcut -t -c epoch,loss \
+    | csvformat -T \
+    | tail -n +3 \
+    | python src/plot_line.py \
+        -o img/pretrain_loss.png \
+        --line_style "o-" \
+        --point_size 3 \
+        -x "Epoch" \
+        -y "Cross-entropy loss" \
+        -t "Training loss"
 ```
 
 </details>
 
-We can plot the training loss and masked-base prediction accuracy to examine
-how the model improves.
+| Overall accuracy | Background | Training loss |
+|---|---|---|
+| <img src="img/pretrain_all.png"> | <img src="img/pretrain_background.png"> | <img src="img/pretrain_loss.png"> |
 
-For a completely random prediction among four equally likely bases, the
-expected accuracy is 25%. A model that learns predictable patterns in the
-sequences may perform better.
+| TATA box | GC box | Poly-A run |
+|---|---|---|
+| <img src="img/pretrain_TATA.png"> | <img src="img/pretrain_GC.png"> | <img src="img/pretrain_polyA.png"> |
 
-However, the background DNA is randomly generated, so many masked positions
-will not be predictable from their neighbors. We should not expect the model to
-predict every masked base correctly.
-
-We can also evaluate accuracy separately for positions inside the inserted
-elements and positions in the random background.
-
-| Sequence region | What we expect |
-|---|---|
-| Random background | Limited predictive information |
-| TATA boxes | Higher accuracy if the motif is learned |
-| GC boxes | Higher accuracy if the motif is learned |
-| Poly-A runs | Higher accuracy because neighboring bases are repetitive |
-
-This comparison is important because all three inserted elements contain predictable structure, but only two were assigned regulatory roles in our synthetic experiment.
+After 12 epochs, accuracy in the randomly background remained near 25%, as
+expected when guessing among four equally likely bases. For the inserted
+patterns, the model correctly predicted 95.8% of masked bases in TATA boxes,
+95.1% in GC boxes, and 100% in poly-A runs.  The model learned to predict bases
+within the inserted sequence patterns more accurately than in the random
+background, but better prediction accuracy does not mean the model learned
+biological function. 
 
 ## Examining contextual embeddings
 
-The model was trained to predict missing bases, but we can also examine the representations produced by its convolutional layers.
+The ultimate goal of pretraining was to learn contextual embeddings that
+capture relationships between DNA sequences. With a trained model, we can
+examine these embeddings to see whether sequences containing similar patterns
+have similar representations, allowing what the model learns about one sequence
+to be applied to others.
 
-For each sequence, we can extract the contextual embeddings and compare positions associated with different sequence elements.
+To test this, we generated 200 sequences for each of four different patterns.
+Each sequence was 17 bases long, matching the receptive field of our
+convolutional model, with a pattern inserted near the center and the remaining
+bases randomly generated. Three patterns were used during pretraining, while
+the fourth was a poly-T run that was not deliberately included in the training
+data.
 
-In the word2vec module, we used PCA to visualize learned word embeddings. We can use the same approach here.
+We then passed each sequence through the pretrained model and extracted the
+64-dimensional contextual embedding at the center position. We used PCA to
+reduce these embeddings to two dimensions and plotted them, coloring each
+sequence according to its original group.
 
-Because the embeddings have many dimensions, we reduce them to two principal components and plot the results, coloring the positions according to the elements we inserted.
+<details>
 
-The model was never given these element labels during training. They are used only to evaluate the representations.
+```
+python src/make_embedding_sequences.py \
+    --n 200 \
+    --length 17 \
+    --out out/embedding_sequences.tsv
 
-If the model learned different sequence patterns, positions associated with TATA boxes, GC boxes, and poly-A runs may occupy different regions of the embedding space.
+head  out/embedding_sequences.tsv
+id	sequence	group
+seq0	TCTGCGGGCGGCATAGT	GC
+seq1	GTTTTTTTTTTTTACCG	polyT
+seq2	ACCAAAAAAAAAACAAG	polyA
+seq3	TCTGATATAAACTTATT	TATA
+seq4	TTAGTTATAAACTCCGC	TATA
+seq5	ACCTTTTTTTTTTTCTG	polyT
+seq6	GCGAAAAAAAAAAGTCT	polyA
+seq7	GACTTTTTTTTTTTCCT	polyT
+seq8	TGACTTATAAATACAAG	TATA
 
-However, separation in the PCA plot does not necessarily mean that the model learned biological function. It may simply have learned differences in nucleotide composition and local sequence structure.
+cat out/embedding_sequences.tsv \
+    | csvcut -t -c sequence \
+    | tail -n +2 \
+    | python src/embed.py \
+        --model out/pretrain.pt \
+> out/contextual_embeddings.tsv
 
-## Zero-shot prediction
+head out/contextual_embeddings.tsv \
+| cut -f 1-4
+id	e1	e2	e3
+seq0	0.000000	0.000000	0.000000
+seq1	0.000000	0.000000	0.000000
+seq2	0.000000	0.000000	0.000000
+seq3	0.000000	0.000000	0.000000
+seq4	0.000000	0.000000	0.000000
+seq5	0.000000	0.000000	0.000000
+seq6	0.000000	0.000000	0.000000
+seq7	0.000000	0.000000	0.000000
+seq8	0.000000	0.000000	0.000000
 
-So far, we have examined how well the model predicts masked bases and how its embeddings represent different sequence patterns.
+python src/pca.py \
+    -i out/contextual_embeddings.tsv \
+    -o out/contextual_pca.tsv
+PC1: 52.9% variance explained
+PC2: 27.6% variance explained
+Wrote out/contextual_pca.tsv
 
-We can also ask whether the model can evaluate a sequence change without being trained specifically to predict its effect.
+cat out/embedding_sequences.tsv \
+| csvcut -t -c id,group \
+| csvformat -T \
+> out/embedding_groups.tsv
 
-For example, consider a TATA box:
+python src/plot_scatter.py \
+    -i out/contextual_pca.tsv \
+    -o img/contextual_pca.png \
+    --x pc1 \
+    --y pc2 \
+    --groups out/embedding_groups.tsv
 
-```text
-TATAAA
+for epochs in 0 1 12; do 
+    echo ${epochs}
+
+    python src/pretrain.py \
+        --genome out/synthetic_genome \
+        --epochs ${epochs} \
+        --log out/pretrain_${epochs}.tsv \
+        --out out/pretrain_${epochs}.pt
+
+    cat out/embedding_sequences.tsv \
+        | csvcut -t -c sequence \
+        | tail -n +2 \
+        | python src/embed.py \
+            --model out/pretrain_${epochs}.pt \
+    > out/contextual_embeddings_${epochs}.tsv
+
+    python src/pca.py \
+        -i out/contextual_embeddings_${epochs}.tsv \
+        -o out/contextual_pca_${epochs}.tsv
+
+    python src/plot_scatter.py \
+        -i out/contextual_pca_${epochs}.tsv \
+        -o img/contextual_pca_${epochs}.png \
+        --x pc1 \
+        --y pc2 \
+        --groups out/embedding_groups.tsv
+done
 ```
 
-We could change one base:
+| Epoch 0 | Epoch 1 | Epoch 12 |
+|---|---|---|
+| <img src="img/contextual_pca_0.png"> | <img src="img/contextual_pca_1.png"> | <img src="img/contextual_pca_12.png"> |
 
-```text
-TATGAA
+Before training, the randomly initialized model already separated some sequence
+patterns, particularly `GC` and poly-`T`, but the `TATA` and poly-`A` groups
+overlapped considerably. After just one epoch of training, all four groups
+occupied distinct regions of the embedding space.
+
+We also used cosine similarity to compare the embeddings of two TATA sequences
+and a TATA sequence with a poly-A sequence. We repeated the comparisons using
+models trained for 0, 1, and 12 epochs.
+
+| Epoch | TATA–TATA | TATA–poly-A |
+|---|---:|---:|
+| 0 | 0.849 | 0.593 |
+| 1 | 0.961 | 0.550 |
+| 12 | 0.994 | 0.560 |
+
+<details>
+```bash
+tata1_id=$(cat out/embedding_groups.tsv \
+    | csvgrep -t -c group -m "TATA" \
+    | csvcut -c id \
+    | tail -n +2 \
+    | head -n 1)
+
+tata2_id=$(cat out/embedding_groups.tsv \
+    | csvgrep -t -c group -m "TATA" \
+    | csvcut -c id \
+    | tail -n +3 \
+    | head -n 1)
+
+polya_id=$(cat out/embedding_groups.tsv \
+    | csvgrep -t -c group -m "polyA" \
+    | csvcut -c id \
+    | tail -n +2 \
+    | head -n 1)
+
+for epoch in 0 1 12; do
+    echo "Epoch $epoch"
+
+    for pair in "${tata1_id}:${polya_id}" "${tata1_id}:${tata2_id}"; do
+        id1=${pair%%:*}
+        id2=${pair##*:}
+
+        echo -n "  $id1 vs $id2: "
+
+        cat out/contextual_embeddings_${epoch}.tsv \
+            | csvgrep -t -c id -r "^(${id1}|${id2})$" \
+            | csvcut -C id \
+            | csvformat -T \
+            | tail -n +2 \
+            | python src/cosine_similarity.py
+    done
+done
+Epoch 0
+  seq3 vs seq2: 0.5933017683660714
+  seq3 vs seq4: 0.8492675571527201
+Epoch 1
+  seq3 vs seq2: 0.5496573158481899
+  seq3 vs seq4: 0.9610958379408593
+Epoch 12
+  seq3 vs seq2: 0.5598365040724981
+  seq3 vs seq4: 0.9942915391223415
 ```
-
-The model can assign probabilities to the original and alternative bases using their surrounding context.
-
-If the original base has a much higher probability than the alternative, the model considers the original sequence more consistent with the patterns it learned during training.
-
-This is an example of a zero-shot prediction: the model evaluates a new task using what it learned during pretraining, without being trained on labeled examples of that task.
-
-We can compare these predictions for mutations in TATA boxes, GC boxes, poly-A runs, and random background sequences.
-
-However, a low probability for a mutation does not necessarily mean the mutation is harmful. It means the mutation is less consistent with the sequence patterns the model learned.
-
-For example, changing a base in a poly-A run may receive a low probability because the model learned that long runs of A are predictable. This does not establish that the change has a biological effect.
-
-The distinction is important: **the model learned to predict sequence, not biological function.**
+</details>
 
 ## Questions
 
-1. Train the model with masking rates of 5%, 15%, and 30%, keeping the training data the same. Compare the training loss and masked-base prediction accuracy. How does the masking rate affect what the model can learn? Are the differences the same for random background sequences and inserted elements?
+1. Train the model with masking rates of 5%, 15%, and 30%, keeping the training
+   data the same. Compare the training loss and masked-base prediction
+accuracy. How does the masking rate affect what the model can learn? Are the
+differences the same for random background sequences and inserted elements?
 
-2. Change the number of convolutional layers while keeping the training data the same. Compare prediction accuracy and the resulting embeddings. How does increasing the amount of surrounding sequence available to the model affect its ability to predict masked bases? Are some sequence elements more sensitive to this change than others?
-
-## Next
-
-Masked prediction allows a model to learn representations from DNA sequences without requiring experimentally measured labels. The model can learn predictable sequence patterns and use those patterns to evaluate new sequences.
-
-However, predicting sequence and predicting biological function are different problems. A model may learn highly predictable patterns that have little relevance to the biological outcome we want to study.
-
-One approach is to use the representations learned during pretraining as inputs to a supervised model trained on experimentally measured outcomes. This is called transfer learning, and it allows us to test whether the representations learned from unlabeled data are useful for predicting biological function.
+2. Train models with convolutional kernel sizes of 3, 5, and 9, keeping the training data the same. Compare masked-base prediction accuracy for background and inserted patterns. How does the amount of surrounding sequence available to the model affect prediction accuracy?
