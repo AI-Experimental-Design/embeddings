@@ -586,6 +586,7 @@ models trained for 0, 1, and 12 epochs.
 | 12 | 0.994 | 0.560 |
 
 <details>
+
 ```bash
 tata1_id=$(cat out/embedding_groups.tsv \
     | csvgrep -t -c group -m "TATA" \
@@ -632,6 +633,7 @@ Epoch 12
   seq3 vs seq2: 0.5598365040724981
   seq3 vs seq4: 0.9942915391223415
 ```
+
 </details>
 
 ## Questions
