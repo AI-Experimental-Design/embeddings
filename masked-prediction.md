@@ -566,6 +566,7 @@ for epochs in 0 1 12; do
         --groups out/embedding_groups.tsv
 done
 ```
+</details>
 
 | Epoch 0 | Epoch 1 | Epoch 12 |
 |---|---|---|
